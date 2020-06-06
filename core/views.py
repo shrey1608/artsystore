@@ -6,7 +6,8 @@ from django.contrib import messages
 from django.views.generic.list import ListView
 from django.views.generic.detail import DetailView
 from django.views.generic import View
-from .models import Item,Order,OrderItem
+from .models import Item,Order,OrderItem,Address
+from .forms import CheckoutForm
 from django.utils import timezone
 
 class HomeView(ListView):
@@ -16,6 +17,7 @@ class HomeView(ListView):
 
 class OrderSummaryView(LoginRequiredMixin,View):
     def get(self,*args,**kwargs):
+        #To check if order is there or not
         try:
             order=Order.objects.get(user=self.request.user,ordered=False)
             context = {
@@ -57,6 +59,7 @@ def add_to_cart(request,slug):
     return redirect("core:product",slug=slug)
 
 @login_required
+#For the addition of the item in the ordersummary page 
 def add_single_item_to_cart(request,slug):
     item=get_object_or_404(Item,slug=slug)
     order_item, created=OrderItem.objects.get_or_create(
@@ -111,6 +114,7 @@ def remove_from_cart(request,slug):
         return redirect("core:product",slug=slug)
     return redirect("core:product",slug=slug)
 
+#For the deletion of the item in the ordersummary page 
 @login_required
 def remove_single_item_from_cart(request, slug):
     item = get_object_or_404(Item, slug=slug)
@@ -140,6 +144,42 @@ def remove_single_item_from_cart(request, slug):
         messages.info(request, "You do not have an active order")
         return redirect("core:product", slug=slug)
 
-class CheckOutView(ListView):
-    model=Item
-    template_name="checkout.html"
+class CheckOutView(View):
+    def get(self,*args,**kwargs):
+        form = CheckoutForm()
+        context = {
+            'form': form
+        }
+        return render(self.request,"checkout.html",context)
+    
+    def post(self, *args, **kwargs):
+        form = CheckoutForm(self.request.POST or None)
+        try:
+            order=Order.objects.get(user=self.request.user,ordered=False)
+            if form.is_valid():
+                street_address=form.cleaned_data.get("street_address")
+                apartment_address = form.cleaned_data.get("apartment_address")
+                zip_code = form.cleaned_data.get("zip_code")
+                state = form.cleaned_data.get("state")
+                country= form.cleaned_data.get("country")
+                # TODO add functionalities later
+                #same_billing_address =form.cleaned_data.get("same_billing_address")
+                #save_info = form.cleaned_data.get("save_info")
+                payment_option =form.cleaned_data.get("payment_option")
+                address=Address(user=self.request.user,
+                                street_address=street_address,
+                                apartment_address=apartment_address,
+                                country=country,
+                                zip_code=zip_code,
+                                state=state
+                )
+                address.save()
+                order.address=address
+                order.save()
+                print(form.cleaned_data)
+                return redirect('core:checkout')
+            messages.warning(self.request,"Failed Checkout")
+            return redirect('core:checkout')
+        except ObjectDoesNotExist:
+            messages.warning(self.request, "You do not have an active order")
+            return redirect("core:order-summary")
