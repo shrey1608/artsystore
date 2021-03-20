@@ -15,7 +15,7 @@ django-floppyforms==1.8.0
 django-formtools==2.2
 django-rest-auth==0.9.5
 django-templated-mail==1.1.1
-djangorestframework==3.11.0
+djangorestframework==3.11.2
 djangorestframework-simplejwt==4.4.0
 djoser==2.0.3
 gunicorn==19.7.1
